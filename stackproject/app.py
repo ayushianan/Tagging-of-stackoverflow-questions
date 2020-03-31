@@ -8,7 +8,7 @@ import pandas as pd
 import pickle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.externals import joblib
+#from sklearn.externals import joblib
 import seaborn as sns
 import warnings
 import pickle
@@ -45,16 +45,78 @@ from sklearn.cluster import KMeans
 import logging
 import os
 from scipy.sparse import hstack
-
+from sklearn.cluster import AgglomerativeClustering
+import re
+import textdistance
+from bs4 import BeautifulSoup
+from token import *
+token=ToktokTokenizer()
+punct = '!"#$%&\'()*+,./:;<=>?@[\\]^_`{|}~'
+lemma=WordNetLemmatizer()
+stop_words = set(stopwords.words("english"))
 
 app = Flask(__name__)
 model = pickle.load(open('model.pkl','rb'))
 vector1 = pickle.load(open('vector1.pkl','rb'))
 vector2= pickle.load(open('vector2.pkl','rb'))
 tagst= pickle.load(open('tagst.pkl','rb'))
+clf= pickle.load(open('clf.pkl','rb'))
+multilabel_binarizer= pickle.load(open('multilabel_binarizer.pkl','rb'))
 
+def lemitizeWords(text):
+    words=token.tokenize(text)
+    listLemma=[]
+    for w in words:
+        x=lemma.lemmatize(w, pos="v")
+        listLemma.append(x)
+    return ' '.join(map(str, listLemma))
 
+def stopWordsRemove(text):
 
+    stop_words = set(stopwords.words("english"))
+
+    words=token.tokenize(text)
+
+    filtered = [w for w in words if not w in stop_words]
+
+    return ' '.join(map(str, filtered))
+
+def clean_punct(text):
+    words=token.tokenize(text)
+    punctuation_filtered = []
+    regex = re.compile('[%s]' % re.escape(punct))
+    remove_punctuation = str.maketrans(' ', ' ', punct)
+    for w in words:
+        if w in tagst:
+            punctuation_filtered.append(w)
+        else:
+            punctuation_filtered.append(regex.sub('', w))
+
+    filtered_list = strip_list_noempty(punctuation_filtered)
+
+    return ' '.join(map(str, filtered_list))
+
+def strip_list_noempty(mylist):
+    newlist = (item.strip() if hasattr(item, 'strip') else item for item in mylist)
+    return [item for item in newlist if item != '']
+
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"what's", "what is ", text)
+    text = re.sub(r"\'s", " ", text)
+    text = re.sub(r"\'ve", " have ", text)
+    text = re.sub(r"can't", "can not ", text)
+    text = re.sub(r"n't", " not ", text)
+    text = re.sub(r"i'm", "i am ", text)
+    text = re.sub(r"\'re", " are ", text)
+    text = re.sub(r"\'d", " would ", text)
+    text = re.sub(r"\'ll", " will ", text)
+    text = re.sub(r"\'scuse", " excuse ", text)
+    text = re.sub(r"\'\n", " ", text)
+    text = re.sub(r"\'\xa0", " ", text)
+    text = re.sub('\s+', ' ', text)
+    text = text.strip(' ')
+    return text
 
 
 @app.route('/')
@@ -66,17 +128,28 @@ def predict():
 
 	if request.method == 'POST':
 		comment = request.form['comment']
-		data = [comment]
+		four=stopWordsRemove(comment)
+		three=lemitizeWords(four)
+		two=clean_text(three)
+		one=clean_punct(two)
+		data=([one])
+		data1 =([one])
+		#data=[comment]
+		#data1=[comment]
 		fitted=vector1.transform(data)
-		fitted2=vector2.transform(data)
-		x_t = hstack([fitted,fitted2])
-		my_prediction = model.predict(x_t)
+		fitted2=vector2.transform(data1)
+		x_t = hstack([fitted,fitted])
+		my_prediction = clf.predict(x_t)
 	res = []
-	xstr1 = ""
-	for labels in (my_prediction):
+	for labels in(my_prediction):
 		for i in range(len(labels)):
-			if labels[i] == 1:
-				res.append(tagst[i])
+			if(labels[i]==1):
+				res.append(multilabel_binarizer.classes_[i])
+	#for i in range(my_prediction.shape[1]):
+	#	for j in range(len(my_prediction))
+	#		if(my_prediction[i][j])
+	#	res.append(multilabel_binarizer.classes_[i])
+
 	return render_template('result.html',res=res)
 
 
