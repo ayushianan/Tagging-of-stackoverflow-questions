@@ -61,6 +61,7 @@ vector1 = pickle.load(open('vector1.pkl','rb'))
 vector2= pickle.load(open('vector2.pkl','rb'))
 tagst= pickle.load(open('tagst.pkl','rb'))
 clf= pickle.load(open('clf.pkl','rb'))
+clflr= pickle.load(open('clf.pkl','rb'))
 multilabel_binarizer= pickle.load(open('multilabel_binarizer.pkl','rb'))
 
 def lemitizeWords(text):
@@ -139,7 +140,7 @@ def predict():
 		fitted=vector1.transform(data)
 		fitted2=vector2.transform(data1)
 		x_t = hstack([fitted,fitted])
-		my_prediction = clf.predict(x_t)
+		my_prediction = clf .predict(x_t)
 	res = []
 	for labels in(my_prediction):
 		for i in range(len(labels)):
